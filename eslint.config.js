@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 import { FlatCompat } from '@eslint/eslintrc';
 import pluginJs from '@eslint/js';
 import importPlugin from 'eslint-plugin-import';
-import fp from 'eslint-plugin-fp';
 
 // mimic CommonJS variables -- not needed if using CommonJS
 const __filename = fileURLToPath(import.meta.url);
@@ -17,10 +16,14 @@ const compat = new FlatCompat({
 
 export default [
   {
+    ignores: ['dist/'],
+  },
+  {
     languageOptions: {
       globals: {
         ...globals.node,
         ...globals.jest,
+        ...globals.browser,
       },
       parserOptions: {
         // Eslint doesn't supply ecmaVersion in `parser.js` `context.parserOptions`
@@ -29,7 +32,7 @@ export default [
         sourceType: 'module',
       },
     },
-    plugins: { import: importPlugin, fp },
+    plugins: { import: importPlugin },
     rules: {
       ...importPlugin.configs.recommended.rules,
     },

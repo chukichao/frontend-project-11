@@ -22,7 +22,7 @@ const i18nextInstance = i18next.createInstance(
 );
 
 const initialState = {
-  errorCode: null,
+  error: null,
   feeds: [],
   processState: 'expectation',
 };
@@ -44,14 +44,16 @@ formRss.addEventListener('submit', (e) => {
 
   setLocale({
     string: {
-      url: '001',
+      url: 'notUrl',
+      required: 'required',
     },
     mixed: {
-      notOneOf: '002',
+      notOneOf: 'exists',
     },
   });
 
-  const schemaUrl = yup.string().trim().required().url().min(0).notOneOf(initialState.feeds);
+  const schemaUrl = yup.string().required().url().min(0)
+    .notOneOf(initialState.feeds);
 
   schemaUrl
     .validate(inputValueUrl)
@@ -63,9 +65,9 @@ formRss.addEventListener('submit', (e) => {
     })
     .catch((err) => {
       watchedState.processState = 'processing';
-      const errorCode = err.errors.at(0);
-      initialState.errorCode = errorCode;
+      const error = err.errors.at(0);
+      initialState.error = error;
       watchedState.processState = 'erroneous process';
-      initialState.errorCode = null;
+      initialState.error = null;
     });
 });

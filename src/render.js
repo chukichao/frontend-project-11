@@ -16,7 +16,7 @@ export default (state, i18nextInstance, elements) => (path, value) => {
     }
     case 'erroneous process': {
       inputUrl.classList.add('is-invalid');
-      formFeedback.textContent = i18nextInstance.t(`codeErrors.${state.errorCode}`);
+      formFeedback.textContent = i18nextInstance.t(`errors.${state.error}`);
       formFeedback.classList.replace('text-success', 'text-danger');
       buttonSubmit.removeAttribute('disabled');
       inputUrl.focus();
@@ -24,7 +24,7 @@ export default (state, i18nextInstance, elements) => (path, value) => {
     }
     case 'successful process': {
       inputUrl.classList.remove('is-invalid');
-      formFeedback.textContent = i18nextInstance.t('successMessage');
+      formFeedback.textContent = i18nextInstance.t('loading.success');
       formFeedback.classList.replace('text-danger', 'text-success');
       break;
     }

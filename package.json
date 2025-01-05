@@ -25,7 +25,9 @@
   },
   "homepage": "https://github.com/chukichao/frontend-project-11#readme",
   "dependencies": {
-    "bootstrap": "^5.3.3"
+    "bootstrap": "^5.3.3",
+    "on-change": "^5.0.1",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",

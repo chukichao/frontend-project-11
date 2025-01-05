@@ -1,4 +1,4 @@
-# [RSS агрегатор](https://frontend-project-11-gculdqtew-chukichaos-projects.vercel.app/)
+# [RSS агрегатор](https://frontend-project-11-git-main-chukichaos-projects.vercel.app/)
 
 ### Testing & Linting:
 

@@ -1,20 +1,31 @@
-export default (state, elements) => (path, value) => {
+export default (state, i18nextInstance, elements) => (path, value) => {
   const [formRss, inputUrl, buttonSubmit] = elements;
 
+  const formFeedback = document.querySelector('.feedback');
+
   switch (value) {
+    case 'processing': {
+      buttonSubmit.setAttribute('disabled', '');
+      break;
+    }
     case 'expectation': {
       formRss.reset();
       inputUrl.focus();
       buttonSubmit.removeAttribute('disabled');
       break;
     }
-    case 'loading': {
-      buttonSubmit.setAttribute('disabled', '');
-      inputUrl.classList.remove('is-invalid');
+    case 'erroneous process': {
+      inputUrl.classList.add('is-invalid');
+      formFeedback.textContent = i18nextInstance.t(`codeErrors.${state.errorCode}`);
+      formFeedback.classList.replace('text-success', 'text-danger');
+      buttonSubmit.removeAttribute('disabled');
+      inputUrl.focus();
       break;
     }
-    case 'incorrectly': {
-      inputUrl.classList.add('is-invalid');
+    case 'successful process': {
+      inputUrl.classList.remove('is-invalid');
+      formFeedback.textContent = i18nextInstance.t('successMessage');
+      formFeedback.classList.replace('text-danger', 'text-success');
       break;
     }
     default:

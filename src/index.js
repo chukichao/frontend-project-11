@@ -4,9 +4,11 @@ import onChange from 'on-change';
 import * as yup from 'yup';
 import { setLocale } from 'yup';
 import i18next from 'i18next';
+import axios from 'axios';
 
 import resources from './locales/index.js';
 import render from './render.js';
+import parcer from './parcer.js';
 
 const i18nextInstance = i18next.createInstance(
   {
@@ -22,8 +24,9 @@ const i18nextInstance = i18next.createInstance(
 );
 
 const initialState = {
-  error: null,
+  loadedUrl: [],
   feeds: [],
+  error: null,
   processState: 'expectation',
 };
 
@@ -53,15 +56,30 @@ formRss.addEventListener('submit', (e) => {
   });
 
   const schemaUrl = yup.string().required().url().min(0)
-    .notOneOf(initialState.feeds);
+    .notOneOf(initialState.loadedUrl);
 
   schemaUrl
     .validate(inputValueUrl)
-    .then(() => {
+    .then(async () => {
       watchedState.processState = 'processing';
-      initialState.feeds = [...initialState.feeds, inputValueUrl];
-      watchedState.processState = 'successful process';
-      watchedState.processState = 'expectation';
+
+      try {
+        const response = await axios.get(
+          `https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(
+            inputValueUrl,
+          )}`,
+        );
+        const feed = parcer(response.data.contents);
+        initialState.loadedUrl = [...initialState.loadedUrl, inputValueUrl];
+        initialState.feeds = [...initialState.feeds, feed];
+
+        watchedState.processState = 'successful process';
+        watchedState.processState = 'expectation';
+      } catch (err) {
+        initialState.error = err.message === 'incorrect RSS' ? 'noRss' : 'network';
+        watchedState.processState = 'erroneous process';
+        initialState.error = null;
+      }
     })
     .catch((err) => {
       watchedState.processState = 'processing';

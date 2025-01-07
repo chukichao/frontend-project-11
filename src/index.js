@@ -13,7 +13,7 @@ import parcer from './parcer.js';
 const i18nextInstance = i18next.createInstance(
   {
     lng: 'ru',
-    debug: true,
+    debug: false,
     resources,
   },
   (err) => {

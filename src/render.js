@@ -34,6 +34,11 @@ const renderFeeds = (state, i18nextInstance, feedsElement) => {
 };
 
 const renderPosts = (state, i18nextInstance, postsElement) => {
+  if (postsElement.children.length > 0) {
+    const content = postsElement.querySelector('div');
+    content.remove();
+  }
+
   const containerPosts = document.createElement('div');
   containerPosts.classList.add('card', 'border-0');
 
@@ -50,6 +55,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
   listPost.classList.add('list-group', 'border-0', 'rounded-0');
 
   const lastFeedIndex = state.feeds.length - 1;
+
   state.feeds[lastFeedIndex].posts.forEach((post) => {
     const postItem = document.createElement('li');
     postItem.classList.add(
@@ -89,6 +95,9 @@ export default (state, i18nextInstance, elements) => (path, value) => {
 
   const formFeedback = document.querySelector('.feedback');
 
+  const feedsElement = document.querySelector('.feeds');
+  const postsElement = document.querySelector('.posts');
+
   switch (value) {
     case 'processing': {
       buttonSubmit.setAttribute('disabled', '');
@@ -112,11 +121,16 @@ export default (state, i18nextInstance, elements) => (path, value) => {
       formFeedback.textContent = i18nextInstance.t('loading.success');
       formFeedback.classList.replace('text-danger', 'text-success');
 
-      const feedsElement = document.querySelector('.feeds');
-      const postsElement = document.querySelector('.posts');
-
       renderFeeds(state, i18nextInstance, feedsElement);
       renderPosts(state, i18nextInstance, postsElement);
+
+      const updatingPosts = () => {
+        setTimeout(() => {
+          renderPosts(state, i18nextInstance, postsElement);
+          updatingPosts();
+        }, 5000);
+      };
+      updatingPosts();
       break;
     }
     default:

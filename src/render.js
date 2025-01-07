@@ -123,14 +123,10 @@ export default (state, i18nextInstance, elements) => (path, value) => {
 
       renderFeeds(state, i18nextInstance, feedsElement);
       renderPosts(state, i18nextInstance, postsElement);
-
-      const updatingPosts = () => {
-        setTimeout(() => {
-          renderPosts(state, i18nextInstance, postsElement);
-          updatingPosts();
-        }, 5000);
-      };
-      updatingPosts();
+      break;
+    }
+    case 'updating posts process': {
+      renderPosts(state, i18nextInstance, postsElement);
       break;
     }
     default:

@@ -27,7 +27,7 @@ const initialState = {
   loadedUrl: [],
   feeds: [],
   error: null,
-  processState: 'expectation',
+  processState: '',
 };
 
 const formRss = document.querySelector('.rss-form');
@@ -38,6 +38,34 @@ const watchedState = onChange(
   initialState,
   render(initialState, i18nextInstance, [formRss, inputUrl, buttonSubmit]),
 );
+
+const handleError = (err) => {
+  initialState.error = err.message === 'incorrect RSS' ? 'noRss' : 'network';
+  watchedState.processState = 'erroneous process';
+  initialState.error = null;
+};
+
+const updatingPostsState = () => {
+  setTimeout(() => {
+    if (initialState.loadedUrl.length > 0) {
+      initialState.loadedUrl.forEach(async (url) => {
+        try {
+          const response = await axios.get(
+            `https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`,
+          );
+          const { posts } = parcer(response.data.contents, url);
+          const foundFeed = initialState.feeds.find((feed) => feed.url === url);
+          foundFeed.posts = posts;
+          watchedState.processState = 'updating posts process';
+          initialState.processState = '';
+          updatingPostsState();
+        } catch (err) {
+          handleError(err);
+        }
+      });
+    }
+  }, 5000);
+};
 
 formRss.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -69,16 +97,15 @@ formRss.addEventListener('submit', (e) => {
             inputValueUrl,
           )}`,
         );
-        const feed = parcer(response.data.contents);
-        initialState.loadedUrl = [...initialState.loadedUrl, inputValueUrl];
+        const feed = parcer(response.data.contents, inputValueUrl);
         initialState.feeds = [...initialState.feeds, feed];
+        initialState.loadedUrl = [...initialState.loadedUrl, inputValueUrl];
 
         watchedState.processState = 'successful process';
         watchedState.processState = 'expectation';
+        updatingPostsState();
       } catch (err) {
-        initialState.error = err.message === 'incorrect RSS' ? 'noRss' : 'network';
-        watchedState.processState = 'erroneous process';
-        initialState.error = null;
+        handleError(err);
       }
     })
     .catch((err) => {

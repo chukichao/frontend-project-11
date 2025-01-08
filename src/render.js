@@ -69,7 +69,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
 
     const refPost = document.createElement('a');
     refPost.setAttribute('href', 'http://example.com/test/1736206860');
-    refPost.classList.add('fw-bold');
+    refPost.classList.add(post.viewed ? 'fw-normal' : 'fw-bold');
     refPost.setAttribute('data-id', `${post.id}`);
     refPost.setAttribute('target', '_blank');
     refPost.setAttribute('rel', 'noopener noreferrer');
@@ -82,6 +82,22 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
     buttonPost.setAttribute('data-bs-toggle', 'modal');
     buttonPost.setAttribute('data-bs-target', '#modal');
     buttonPost.textContent = i18nextInstance.t('preview');
+
+    buttonPost.addEventListener('click', () => {
+      const { posts } = state.feeds.find((feed) => feed.url === post.urlFeed);
+      const currentPost = posts.find((postFeed) => postFeed.id === post.id);
+      currentPost.viewed = true;
+
+      const modalTitle = document.querySelector('.modal-title');
+      const modalBody = document.querySelector('.modal-body');
+      const modalButton = document.querySelector('.modal-footer > a');
+
+      modalTitle.textContent = post.title;
+      modalBody.textContent = post.description;
+      modalButton.setAttribute('href', 'http://example.com/test/1736206860');
+
+      renderPosts(state, i18nextInstance, postsElement);
+    });
 
     postItem.append(refPost, buttonPost);
     listPost.append(postItem);

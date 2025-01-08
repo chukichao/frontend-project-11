@@ -55,7 +55,11 @@ const updatingPostsState = () => {
           );
           const { posts } = parcer(response.data.contents, url);
           const foundFeed = initialState.feeds.find((feed) => feed.url === url);
-          foundFeed.posts = posts;
+          const lastUpdatePost = posts[0];
+          const lastloadedPost = foundFeed.posts[0];
+          if (lastUpdatePost.date !== lastloadedPost.date) {
+            foundFeed.posts.unshift(lastUpdatePost);
+          }
           watchedState.processState = 'updating posts process';
           initialState.processState = '';
           updatingPostsState();

@@ -27,7 +27,7 @@ export default (contents, url) => {
 
     return { ...feed };
   } catch (err) {
-    const error = new Error('incorrect RSS');
+    const error = new Error('RSS Error');
     throw error;
   }
 };

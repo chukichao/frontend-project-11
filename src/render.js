@@ -115,24 +115,24 @@ export default (state, i18nextInstance, elements) => (path, value) => {
   const postsElement = document.querySelector('.posts');
 
   switch (value) {
-    case 'processing': {
+    case 'loading posts': {
       buttonSubmit.setAttribute('disabled', '');
       break;
     }
-    case 'expectation': {
+    case 'clearing field': {
       formRss.reset();
       inputUrl.focus();
       buttonSubmit.removeAttribute('disabled');
       break;
     }
-    case 'erroneous process': {
+    case 'erroneous loaded': {
       inputUrl.classList.add('is-invalid');
       formFeedback.textContent = i18nextInstance.t(`errors.${state.error}`);
       formFeedback.classList.replace('text-success', 'text-danger');
       buttonSubmit.removeAttribute('disabled');
       break;
     }
-    case 'successful process': {
+    case 'successful loaded': {
       inputUrl.classList.remove('is-invalid');
       formFeedback.textContent = i18nextInstance.t('loading.success');
       formFeedback.classList.replace('text-danger', 'text-success');
@@ -141,7 +141,7 @@ export default (state, i18nextInstance, elements) => (path, value) => {
       renderPosts(state, i18nextInstance, postsElement);
       break;
     }
-    case 'updating posts process': {
+    case 'updating posts': {
       renderPosts(state, i18nextInstance, postsElement);
       break;
     }

@@ -26,7 +26,7 @@ const i18nextInstance = i18next.createInstance(
 const initialState = {
   loadedUrl: [],
   feeds: [],
-  error: null,
+  error: '',
   processState: '',
 };
 
@@ -39,13 +39,7 @@ const watchedState = onChange(
   render(initialState, i18nextInstance, [formRss, inputUrl, buttonSubmit]),
 );
 
-const handleError = (err) => {
-  initialState.error = err.message === 'incorrect RSS' ? 'noRss' : 'network';
-  watchedState.processState = 'erroneous process';
-  initialState.error = null;
-};
-
-const updatingPostsState = () => {
+const updatingPosts = () => {
   setTimeout(() => {
     if (initialState.loadedUrl.length > 0) {
       initialState.loadedUrl.forEach(async (url) => {
@@ -55,16 +49,26 @@ const updatingPostsState = () => {
           );
           const { posts } = parcer(response.data.contents, url);
           const foundFeed = initialState.feeds.find((feed) => feed.url === url);
-          const lastUpdatePost = posts[0];
-          const lastloadedPost = foundFeed.posts[0];
-          if (lastUpdatePost.date !== lastloadedPost.date) {
-            foundFeed.posts.unshift(lastUpdatePost);
+
+          for (let i = 0; i < posts.length; i += 1) {
+            if (posts[i].date !== foundFeed.posts[i].date) {
+              const lastUpdatePost = posts[i];
+              foundFeed.posts.unshift(lastUpdatePost);
+            } else {
+              break;
+            }
           }
-          watchedState.processState = 'updating posts process';
+
+          foundFeed.posts.sort((a, b) => Math.sign(b.date - a.date));
+
+          watchedState.processState = 'updating posts';
           initialState.processState = '';
-          updatingPostsState();
+          updatingPosts();
         } catch (err) {
-          handleError(err);
+          if (err.message === 'Network Error') {
+            console.error(err);
+          }
+          updatingPosts();
         }
       });
     }
@@ -93,7 +97,7 @@ formRss.addEventListener('submit', (e) => {
   schemaUrl
     .validate(inputValueUrl)
     .then(async () => {
-      watchedState.processState = 'processing';
+      watchedState.processState = 'loading posts';
 
       try {
         const response = await axios.get(
@@ -105,18 +109,21 @@ formRss.addEventListener('submit', (e) => {
         initialState.feeds = [...initialState.feeds, feed];
         initialState.loadedUrl = [...initialState.loadedUrl, inputValueUrl];
 
-        watchedState.processState = 'successful process';
-        watchedState.processState = 'expectation';
-        updatingPostsState();
+        watchedState.processState = 'successful loaded';
+        watchedState.processState = 'clearing field';
+        updatingPosts();
       } catch (err) {
-        handleError(err);
+        initialState.error = err.message === 'RSS Error' ? 'noRss' : 'network';
+        if (initialState.error === 'network') {
+          console.log(err);
+        }
+        watchedState.processState = 'erroneous loaded';
       }
     })
     .catch((err) => {
-      watchedState.processState = 'processing';
+      watchedState.processState = 'loading posts';
       const error = err.errors.at(0);
       initialState.error = error;
-      watchedState.processState = 'erroneous process';
-      initialState.error = null;
+      watchedState.processState = 'erroneous loaded';
     });
 });

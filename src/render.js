@@ -79,7 +79,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
     refPost.textContent = post.title;
 
     refPost.addEventListener('click', () => {
-      // state.uiState.viewedPosts.add(post.id);
+      state.uiState.viewedPosts.add(post.id);
 
       renderPosts(state, i18nextInstance, postsElement);
     });
@@ -93,7 +93,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
     buttonPost.textContent = i18nextInstance.t('preview');
 
     buttonPost.addEventListener('click', () => {
-      // state.uiState.viewedPosts.add(post.id);
+      state.uiState.viewedPosts.add(post.id);
 
       const modalTitle = document.querySelector('.modal-title');
       const modalBody = document.querySelector('.modal-body');

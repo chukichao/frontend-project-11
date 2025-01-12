@@ -1,4 +1,9 @@
 const renderFeeds = (state, i18nextInstance, feedsElement) => {
+  if (feedsElement.children.length > 0) {
+    const content = feedsElement.querySelector('div');
+    content.remove();
+  }
+
   const containerFeeds = document.createElement('div');
   containerFeeds.classList.add('card', 'border-0');
 
@@ -14,21 +19,21 @@ const renderFeeds = (state, i18nextInstance, feedsElement) => {
   const listFeed = document.createElement('ul');
   listFeed.classList.add('list-group', 'border-0', 'rounded-0');
 
-  const feedItem = document.createElement('li');
-  feedItem.classList.add('list-group-item', 'border-0', 'border-end-0');
+  state.feeds.forEach((feed) => {
+    const feedItem = document.createElement('li');
+    feedItem.classList.add('list-group-item', 'border-0', 'border-end-0');
 
-  const lastFeedIndex = state.feeds.length - 1;
+    const headerFeed = document.createElement('h3');
+    headerFeed.classList.add('h6', 'm-0');
+    headerFeed.textContent = feed.title;
 
-  const headerFeed = document.createElement('h3');
-  headerFeed.classList.add('h6', 'm-0');
-  headerFeed.textContent = state.feeds[lastFeedIndex].title;
+    const descriptionFeed = document.createElement('p');
+    descriptionFeed.classList.add('m-0', 'small', 'text-black-50');
+    descriptionFeed.textContent = feed.description;
 
-  const descriptionFeed = document.createElement('p');
-  descriptionFeed.classList.add('m-0', 'small', 'text-black-50');
-  descriptionFeed.textContent = state.feeds[lastFeedIndex].description;
-
-  feedItem.append(headerFeed, descriptionFeed);
-  listFeed.append(feedItem);
+    feedItem.append(headerFeed, descriptionFeed);
+    listFeed.append(feedItem);
+  });
 
   containerFeeds.append(headerContainerFeed, listFeed);
 };
@@ -54,9 +59,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
   const listPost = document.createElement('ul');
   listPost.classList.add('list-group', 'border-0', 'rounded-0');
 
-  const lastFeedIndex = state.feeds.length - 1;
-
-  state.feeds[lastFeedIndex].posts.forEach((post) => {
+  state.posts.forEach((post) => {
     const postItem = document.createElement('li');
     postItem.classList.add(
       'list-group-item',
@@ -69,11 +72,17 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
 
     const refPost = document.createElement('a');
     refPost.setAttribute('href', 'http://example.com/test/1736206860');
-    refPost.classList.add(post.viewed ? 'fw-normal' : 'fw-bold');
+    refPost.classList.add(state.uiState.viewedPosts.has(post.id) ? 'fw-normal' : 'fw-bold');
     refPost.setAttribute('data-id', `${post.id}`);
     refPost.setAttribute('target', '_blank');
     refPost.setAttribute('rel', 'noopener noreferrer');
     refPost.textContent = post.title;
+
+    refPost.addEventListener('click', () => {
+      // state.uiState.viewedPosts.add(post.id);
+
+      renderPosts(state, i18nextInstance, postsElement);
+    });
 
     const buttonPost = document.createElement('button');
     buttonPost.setAttribute('type', 'button');
@@ -84,9 +93,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
     buttonPost.textContent = i18nextInstance.t('preview');
 
     buttonPost.addEventListener('click', () => {
-      const { posts } = state.feeds.find((feed) => feed.url === post.urlFeed);
-      const currentPost = posts.find((postFeed) => postFeed.id === post.id);
-      currentPost.viewed = true;
+      // state.uiState.viewedPosts.add(post.id);
 
       const modalTitle = document.querySelector('.modal-title');
       const modalBody = document.querySelector('.modal-body');
@@ -106,46 +113,58 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
   containerPosts.append(headerContainerPost, listPost);
 };
 
-export default (state, i18nextInstance, elements) => (path, value) => {
-  const [formRss, inputUrl, buttonSubmit] = elements;
+/* eslint-disable no-param-reassign */
+export default (state, i18nextInstance, elementPage) => (path, value) => {
+  if (path === 'loadingProcess.status') {
+    switch (value) {
+      case 'loading': {
+        elementPage.buttonAdd.setAttribute('disabled', '');
+        elementPage.inputUrl.setAttribute('disabled', '');
 
-  const formFeedback = document.querySelector('.feedback');
+        elementPage.formFeedback.textContent = '';
+        elementPage.inputUrl.classList.remove('is-invalid');
+        break;
+      }
+      case 'updating': {
+        renderPosts(state, i18nextInstance, elementPage.postsElement);
+        break;
+      }
+      case 'failed': {
+        elementPage.formFeedback.textContent = i18nextInstance.t(
+          `errors.${state.form.error || state.loadingProcess.error}`,
+        );
 
-  const feedsElement = document.querySelector('.feeds');
-  const postsElement = document.querySelector('.posts');
+        if (!state.form.isValid) {
+          elementPage.inputUrl.classList.add('is-invalid');
+        }
 
-  switch (value) {
-    case 'loading posts': {
-      buttonSubmit.setAttribute('disabled', '');
-      break;
-    }
-    case 'clearing field': {
-      formRss.reset();
-      inputUrl.focus();
-      buttonSubmit.removeAttribute('disabled');
-      break;
-    }
-    case 'erroneous loaded': {
-      inputUrl.classList.add('is-invalid');
-      formFeedback.textContent = i18nextInstance.t(`errors.${state.error}`);
-      formFeedback.classList.replace('text-success', 'text-danger');
-      buttonSubmit.removeAttribute('disabled');
-      break;
-    }
-    case 'successful loaded': {
-      inputUrl.classList.remove('is-invalid');
-      formFeedback.textContent = i18nextInstance.t('loading.success');
-      formFeedback.classList.replace('text-danger', 'text-success');
+        elementPage.formFeedback.classList.replace('text-success', 'text-danger');
 
-      renderFeeds(state, i18nextInstance, feedsElement);
-      renderPosts(state, i18nextInstance, postsElement);
-      break;
+        elementPage.inputUrl.removeAttribute('disabled');
+        elementPage.buttonAdd.removeAttribute('disabled');
+        elementPage.inputUrl.focus();
+        break;
+      }
+      case 'success': {
+        elementPage.formFeedback.textContent = i18nextInstance.t('loading.success');
+
+        elementPage.inputUrl.classList.remove('is-invalid');
+
+        elementPage.formFeedback.classList.replace('text-danger', 'text-success');
+
+        renderFeeds(state, i18nextInstance, elementPage.feedsElement);
+        renderPosts(state, i18nextInstance, elementPage.postsElement);
+
+        elementPage.inputUrl.removeAttribute('disabled');
+        elementPage.buttonAdd.removeAttribute('disabled');
+
+        elementPage.formRss.reset();
+        elementPage.inputUrl.focus();
+        break;
+      }
+      default:
+        throw new Error(`Error: undefined status of the loading process '${state.loadingProcess}'`);
     }
-    case 'updating posts': {
-      renderPosts(state, i18nextInstance, postsElement);
-      break;
-    }
-    default:
-      throw new Error(`Error: undefined state of the process '${state.processState}'`);
   }
 };
+/* eslint-enable no-param-reassign */

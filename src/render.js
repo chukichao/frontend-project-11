@@ -1,3 +1,5 @@
+import onChange from 'on-change';
+
 const renderFeeds = (state, i18nextInstance, feedsElement) => {
   if (feedsElement.children.length > 0) {
     const content = feedsElement.querySelector('div');
@@ -78,10 +80,13 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
     refPost.setAttribute('rel', 'noopener noreferrer');
     refPost.textContent = post.title;
 
-    refPost.addEventListener('click', () => {
-      state.uiState.viewedPosts.add(post.id);
+    const watchedState = onChange(state, () => {
+      refPost.classList.remove('fw-normal', 'fw-bold');
+      refPost.classList.add(state.uiState.viewedPosts.has(post.id) ? 'fw-normal' : 'fw-bold');
+    });
 
-      renderPosts(state, i18nextInstance, postsElement);
+    refPost.addEventListener('click', () => {
+      watchedState.uiState.viewedPosts.add(post.id);
     });
 
     const buttonPost = document.createElement('button');
@@ -93,8 +98,6 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
     buttonPost.textContent = i18nextInstance.t('preview');
 
     buttonPost.addEventListener('click', () => {
-      state.uiState.viewedPosts.add(post.id);
-
       const modalTitle = document.querySelector('.modal-title');
       const modalBody = document.querySelector('.modal-body');
       const modalButton = document.querySelector('.modal-footer > a');
@@ -103,7 +106,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
       modalBody.textContent = post.description;
       modalButton.setAttribute('href', 'http://example.com/test/1736206860');
 
-      renderPosts(state, i18nextInstance, postsElement);
+      watchedState.uiState.viewedPosts.add(post.id);
     });
 
     postItem.append(refPost, buttonPost);
@@ -114,7 +117,18 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
 };
 
 /* eslint-disable no-param-reassign */
-export default (state, i18nextInstance, elementPage) => (path, value) => {
+const render = (state, i18nextInstance, elementPage) => (path, value) => {
+  if (path === 'posts') renderPosts(state, i18nextInstance, elementPage.postsElement);
+  if (path === 'feeds') renderFeeds(state, i18nextInstance, elementPage.feedsElement);
+
+  if (path === 'form.isValid') {
+    elementPage.inputUrl.classList.remove('is-invalid');
+
+    if (value === false) {
+      elementPage.inputUrl.classList.add('is-invalid');
+    }
+  }
+
   if (path === 'loadingProcess.status') {
     switch (value) {
       case 'loading': {
@@ -122,21 +136,12 @@ export default (state, i18nextInstance, elementPage) => (path, value) => {
         elementPage.inputUrl.setAttribute('disabled', '');
 
         elementPage.formFeedback.textContent = '';
-        elementPage.inputUrl.classList.remove('is-invalid');
-        break;
-      }
-      case 'updating': {
-        renderPosts(state, i18nextInstance, elementPage.postsElement);
         break;
       }
       case 'failed': {
         elementPage.formFeedback.textContent = i18nextInstance.t(
           `errors.${state.form.error || state.loadingProcess.error}`,
         );
-
-        if (!state.form.isValid) {
-          elementPage.inputUrl.classList.add('is-invalid');
-        }
 
         elementPage.formFeedback.classList.replace('text-success', 'text-danger');
 
@@ -148,12 +153,7 @@ export default (state, i18nextInstance, elementPage) => (path, value) => {
       case 'success': {
         elementPage.formFeedback.textContent = i18nextInstance.t('loading.success');
 
-        elementPage.inputUrl.classList.remove('is-invalid');
-
         elementPage.formFeedback.classList.replace('text-danger', 'text-success');
-
-        renderFeeds(state, i18nextInstance, elementPage.feedsElement);
-        renderPosts(state, i18nextInstance, elementPage.postsElement);
 
         elementPage.inputUrl.removeAttribute('disabled');
         elementPage.buttonAdd.removeAttribute('disabled');
@@ -168,3 +168,5 @@ export default (state, i18nextInstance, elementPage) => (path, value) => {
   }
 };
 /* eslint-enable no-param-reassign */
+
+export default render;

@@ -3,17 +3,16 @@ import * as yup from 'yup';
 import { setLocale } from 'yup';
 import i18next from 'i18next';
 import axios from 'axios';
-import { keyBy } from 'lodash';
+import { keyBy, uniqueId } from 'lodash';
 
 import resources from './locales/index.js';
 import render from './render.js';
-import parceXML from './utils/parcer.js';
+import { parceXML, getProxyURL } from './utils/utils.js';
 
 const STATUS = {
   loading: 'loading',
   success: 'success',
   failed: 'failed',
-  updating: 'updating',
 };
 
 const ERROR = {
@@ -23,6 +22,31 @@ const ERROR = {
   noRss: 'noRss',
   network: 'network',
   unknown: 'unknown',
+};
+
+const getParsedData = (data) => {
+  const doc = parceXML(data);
+
+  const getDateByTitlePost = (title) => new Date(title.split(' ').at(-1)).getTime();
+
+  const feed = {
+    title: doc.querySelector('channel > title').textContent,
+    description: doc.querySelector('channel > description').textContent,
+  };
+
+  const posts = Array.from(doc.querySelectorAll('item')).map((post) => {
+    const title = post.querySelector('title').textContent;
+    const description = post.querySelector('description').textContent;
+    const createAt = getDateByTitlePost(title);
+
+    return {
+      title,
+      description,
+      createAt,
+    };
+  });
+
+  return { feed, posts };
 };
 
 export default () => {
@@ -43,7 +67,7 @@ export default () => {
     feeds: [],
     posts: [],
     form: {
-      isValid: false,
+      isValid: true,
       error: null,
     },
     loadingProcess: {
@@ -54,6 +78,16 @@ export default () => {
       viewedPosts: new Set(),
     },
   };
+
+  setLocale({
+    string: {
+      url: ERROR.notUrl,
+      required: ERROR.required,
+    },
+    mixed: {
+      notOneOf: ERROR.exists,
+    },
+  });
 
   const element = {
     formRss: document.querySelector('.rss-form'),
@@ -66,42 +100,14 @@ export default () => {
 
   const watchedState = onChange(initialState, render(initialState, i18nextInstance, element));
 
-  const loadData = async (inputValueUrl) => {
-    await axios
-      .get(
-        `https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(
-          inputValueUrl,
-        )}`,
-      )
-      .then((res) => {
-        let { feed, posts } = parceXML(res.data.contents);
-
-        feed = {
-          id: Math.random() * 1e8,
-          url: inputValueUrl,
-          ...feed,
-        };
-
-        posts = posts.map((post) => ({
-          id: Math.random() * 1e8,
-          ...post,
-        }));
-
-        initialState.feeds = [feed, ...initialState.feeds];
-        initialState.posts = [...initialState.posts, ...posts];
-      });
-  };
-
   const runUpdatingPosts = () => {
-    const promises = initialState.feeds.map(({ url }) => axios.get(
-      `https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`,
-    ));
+    const promises = initialState.feeds.map(({ url }) => axios.get(getProxyURL(url)));
 
     let updatedPosts = [];
     Promise.all(promises)
       .then((responses) => {
         responses.forEach((response) => {
-          const { posts } = parceXML(response.data.contents);
+          const { posts } = getParsedData(response.data.contents);
 
           const filteredPosts = [...posts, ...initialState.posts].filter(
             (post) => Object.hasOwn(keyBy(initialState.posts, 'title'), post.title) === false,
@@ -109,20 +115,45 @@ export default () => {
 
           updatedPosts = [...updatedPosts, ...filteredPosts];
         });
-        updatedPosts = updatedPosts.map((post) => ({ id: Math.random() * 1e8, ...post }));
-        initialState.posts = [...initialState.posts, ...updatedPosts];
+        updatedPosts = updatedPosts.map((post) => ({ id: uniqueId(), ...post }));
+
+        watchedState.posts = [...initialState.posts, ...updatedPosts];
+
+        watchedState.posts.sort((a, b) => Math.sign(b.createAt - a.createAt));
       })
       .catch((err) => {
         console.error(err);
+      })
+      .finally(() => {
+        setTimeout(() => runUpdatingPosts(), 5000);
       });
-
-    initialState.posts.sort((a, b) => Math.sign(b.createAt - a.createAt));
-
-    watchedState.loadingProcess.status = STATUS.updating;
-    initialState.loadingProcess.status = '';
-
-    setTimeout(() => runUpdatingPosts(), 5000);
   };
+
+  if (initialState.posts.length > 0) {
+    runUpdatingPosts();
+  }
+
+  const loadData = (inputValueUrl) => axios.get(getProxyURL(inputValueUrl)).then((res) => {
+    let { feed, posts } = getParsedData(res.data.contents);
+
+    feed = {
+      id: uniqueId(),
+      url: inputValueUrl,
+      ...feed,
+    };
+
+    posts = posts.map((post) => ({
+      id: uniqueId(),
+      ...post,
+    }));
+
+    if (initialState.posts.length === 0) {
+      runUpdatingPosts();
+    }
+
+    watchedState.feeds = [feed, ...initialState.feeds];
+    watchedState.posts = [...initialState.posts, ...posts];
+  });
 
   element.formRss.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -131,16 +162,6 @@ export default () => {
     const inputValueUrl = formData.get('url').trim();
 
     watchedState.loadingProcess.status = STATUS.loading;
-
-    setLocale({
-      string: {
-        url: ERROR.notUrl,
-        required: ERROR.required,
-      },
-      mixed: {
-        notOneOf: ERROR.exists,
-      },
-    });
 
     const schemaURL = yup
       .string()
@@ -151,38 +172,36 @@ export default () => {
 
     schemaURL
       .validate(inputValueUrl)
-      .then(async () => {
-        try {
-          await loadData(inputValueUrl);
+      .then(() => {
+        loadData(inputValueUrl)
+          .then(() => {
+            watchedState.loadingProcess.status = STATUS.success;
 
-          watchedState.loadingProcess.status = STATUS.success;
+            watchedState.form.isValid = true;
+          })
+          .catch((err) => {
+            if (err.message === 'Parsing Error') {
+              initialState.loadingProcess.error = ERROR.noRss;
+            } else if (err.message === 'Network Error') {
+              initialState.loadingProcess.error = ERROR.network;
+              console.log(err);
+            } else {
+              initialState.loadingProcess.error = ERROR.unknown;
+              console.log(err);
+            }
 
-          if (initialState.feeds.length === 1) {
-            runUpdatingPosts();
-          }
-        } catch (err) {
-          if (err.message === 'RSS Error') {
-            initialState.loadingProcess.error = ERROR.noRss;
-          } else if (err.message === 'Network Error') {
-            initialState.loadingProcess.error = ERROR.network;
-            console.log(err);
-          } else {
-            initialState.loadingProcess.error = ERROR.unknown;
-            console.log(err);
-          }
+            watchedState.form.isValid = true;
 
-          initialState.form.isValid = true;
-
-          watchedState.loadingProcess.status = STATUS.failed;
-          initialState.loadingProcess.error = null;
-        }
+            watchedState.loadingProcess.status = STATUS.failed;
+            initialState.loadingProcess.error = null;
+          });
       })
       .catch((err) => {
         const errorIndex = 0;
         const errorCode = err.errors.at(errorIndex);
         initialState.form.error = errorCode;
 
-        initialState.form.isValid = false;
+        watchedState.form.isValid = false;
 
         watchedState.loadingProcess.status = STATUS.failed;
         initialState.form.error = null;

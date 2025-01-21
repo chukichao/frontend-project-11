@@ -129,22 +129,36 @@ const render = (state, i18nextInstance, elementPage) => (path, value) => {
     }
   }
 
+  if (path === 'form.error') {
+    if (value === null) {
+      elementPage.formFeedback.textContent = '';
+      return;
+    }
+
+    elementPage.formFeedback.textContent = i18nextInstance.t(`errors.${value}`);
+
+    elementPage.formFeedback.classList.replace('text-success', 'text-danger');
+  }
+
+  if (path === 'loadingProcess.error') {
+    if (value === null) {
+      elementPage.formFeedback.textContent = '';
+      return;
+    }
+
+    elementPage.formFeedback.textContent = i18nextInstance.t(`errors.${value}`);
+
+    elementPage.formFeedback.classList.replace('text-success', 'text-danger');
+  }
+
   if (path === 'loadingProcess.status') {
     switch (value) {
       case 'loading': {
         elementPage.buttonAdd.setAttribute('disabled', '');
         elementPage.inputUrl.setAttribute('disabled', '');
-
-        elementPage.formFeedback.textContent = '';
         break;
       }
       case 'failed': {
-        elementPage.formFeedback.textContent = i18nextInstance.t(
-          `errors.${state.form.error || state.loadingProcess.error}`,
-        );
-
-        elementPage.formFeedback.classList.replace('text-success', 'text-danger');
-
         elementPage.inputUrl.removeAttribute('disabled');
         elementPage.buttonAdd.removeAttribute('disabled');
         elementPage.inputUrl.focus();
@@ -152,7 +166,6 @@ const render = (state, i18nextInstance, elementPage) => (path, value) => {
       }
       case 'success': {
         elementPage.formFeedback.textContent = i18nextInstance.t('loading.success');
-
         elementPage.formFeedback.classList.replace('text-danger', 'text-success');
 
         elementPage.inputUrl.removeAttribute('disabled');

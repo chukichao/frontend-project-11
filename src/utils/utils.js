@@ -6,7 +6,22 @@ export const parceXML = (data) => {
     throw Error('Parsing Error');
   }
 
-  return doc;
+  const channel = {
+    title: doc.querySelector('channel > title').textContent,
+    description: doc.querySelector('channel > description').textContent,
+  };
+
+  const items = Array.from(doc.querySelectorAll('item')).map((post) => {
+    const title = post.querySelector('title').textContent;
+    const description = post.querySelector('description').textContent;
+
+    return {
+      title,
+      description,
+    };
+  });
+
+  return { channel, items };
 };
 
 export const getProxyURL = (inputValueUrl) => {

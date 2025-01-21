@@ -24,31 +24,6 @@ const ERROR = {
   unknown: 'unknown',
 };
 
-const getParsedData = (data) => {
-  const doc = parceXML(data);
-
-  const getDateByTitlePost = (title) => new Date(title.split(' ').at(-1)).getTime();
-
-  const feed = {
-    title: doc.querySelector('channel > title').textContent,
-    description: doc.querySelector('channel > description').textContent,
-  };
-
-  const posts = Array.from(doc.querySelectorAll('item')).map((post) => {
-    const title = post.querySelector('title').textContent;
-    const description = post.querySelector('description').textContent;
-    const createAt = getDateByTitlePost(title);
-
-    return {
-      title,
-      description,
-      createAt,
-    };
-  });
-
-  return { feed, posts };
-};
-
 export default () => {
   const i18nextInstance = i18next.createInstance(
     {
@@ -71,7 +46,7 @@ export default () => {
       error: null,
     },
     loadingProcess: {
-      status: '',
+      status: 'initial',
       error: null,
     },
     uiState: {
@@ -101,25 +76,24 @@ export default () => {
   const watchedState = onChange(initialState, render(initialState, i18nextInstance, element));
 
   const runUpdatingPosts = () => {
-    const promises = initialState.feeds.map(({ url }) => axios.get(getProxyURL(url)));
+    const promises = watchedState.feeds.map(({ url }) => axios.get(getProxyURL(url)));
 
     let updatedPosts = [];
     Promise.all(promises)
       .then((responses) => {
-        responses.forEach((response) => {
-          const { posts } = getParsedData(response.data.contents);
+        updatedPosts = responses
+          .flatMap((response) => {
+            const { items: posts } = parceXML(response.data.contents);
 
-          const filteredPosts = [...posts, ...initialState.posts].filter(
-            (post) => Object.hasOwn(keyBy(initialState.posts, 'title'), post.title) === false,
-          );
+            return [...posts, ...watchedState.posts].filter(
+              (post) => Object.hasOwn(keyBy(watchedState.posts, 'title'), post.title) === false,
+            );
+          })
+          .map((post) => ({ id: uniqueId(), ...post }));
 
-          updatedPosts = [...updatedPosts, ...filteredPosts];
-        });
-        updatedPosts = updatedPosts.map((post) => ({ id: uniqueId(), ...post }));
-
-        watchedState.posts = [...initialState.posts, ...updatedPosts];
-
-        watchedState.posts.sort((a, b) => Math.sign(b.createAt - a.createAt));
+        if (watchedState.feeds.length) {
+          watchedState.posts = [...updatedPosts, ...watchedState.posts];
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -129,12 +103,10 @@ export default () => {
       });
   };
 
-  if (initialState.posts.length > 0) {
-    runUpdatingPosts();
-  }
+  runUpdatingPosts();
 
   const loadData = (inputValueUrl) => axios.get(getProxyURL(inputValueUrl)).then((res) => {
-    let { feed, posts } = getParsedData(res.data.contents);
+    let { channel: feed, items: posts } = parceXML(res.data.contents);
 
     feed = {
       id: uniqueId(),
@@ -147,12 +119,8 @@ export default () => {
       ...post,
     }));
 
-    if (initialState.posts.length === 0) {
-      runUpdatingPosts();
-    }
-
-    watchedState.feeds = [feed, ...initialState.feeds];
-    watchedState.posts = [...initialState.posts, ...posts];
+    watchedState.feeds = [feed, ...watchedState.feeds];
+    watchedState.posts = [...posts, ...watchedState.posts];
   });
 
   element.formRss.addEventListener('submit', (e) => {
@@ -163,12 +131,15 @@ export default () => {
 
     watchedState.loadingProcess.status = STATUS.loading;
 
+    if (watchedState.form.error) watchedState.form.error = null;
+    if (watchedState.loadingProcess.error) watchedState.loadingProcess.error = null;
+
     const schemaURL = yup
       .string()
       .required()
       .url()
       .min(0)
-      .notOneOf(initialState.feeds.map((feed) => feed.url));
+      .notOneOf(watchedState.feeds.map((feed) => feed.url));
 
     schemaURL
       .validate(inputValueUrl)
@@ -181,30 +152,26 @@ export default () => {
           })
           .catch((err) => {
             if (err.message === 'Parsing Error') {
-              initialState.loadingProcess.error = ERROR.noRss;
+              watchedState.loadingProcess.error = ERROR.noRss;
             } else if (err.message === 'Network Error') {
-              initialState.loadingProcess.error = ERROR.network;
+              watchedState.loadingProcess.error = ERROR.network;
               console.log(err);
             } else {
-              initialState.loadingProcess.error = ERROR.unknown;
+              watchedState.loadingProcess.error = ERROR.unknown;
               console.log(err);
             }
 
             watchedState.form.isValid = true;
-
             watchedState.loadingProcess.status = STATUS.failed;
-            initialState.loadingProcess.error = null;
           });
       })
       .catch((err) => {
         const errorIndex = 0;
         const errorCode = err.errors.at(errorIndex);
-        initialState.form.error = errorCode;
+        watchedState.form.error = errorCode;
 
         watchedState.form.isValid = false;
-
         watchedState.loadingProcess.status = STATUS.failed;
-        initialState.form.error = null;
       });
   });
 };

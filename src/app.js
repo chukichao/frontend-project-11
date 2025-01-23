@@ -78,10 +78,9 @@ export default () => {
   const runUpdatingPosts = () => {
     const promises = watchedState.feeds.map(({ url }) => axios.get(getProxyURL(url)));
 
-    let updatedPosts = [];
     Promise.all(promises)
       .then((responses) => {
-        updatedPosts = responses
+        const updatedPosts = responses
           .flatMap((response) => {
             const { items: posts } = parceXML(response.data.contents);
 

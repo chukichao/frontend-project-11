@@ -73,7 +73,9 @@ export default () => {
     postsElement: document.querySelector('.posts'),
   };
 
-  const watchedState = onChange(initialState, render(initialState, i18nextInstance, element));
+  const watchedState = onChange(initialState, (path, value) => {
+    render(watchedState, i18nextInstance, element, { path, value });
+  });
 
   const runUpdatingPosts = () => {
     const promises = watchedState.feeds.map(({ url }) => axios.get(getProxyURL(url)));

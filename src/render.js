@@ -1,6 +1,4 @@
-import onChange from 'on-change';
-
-const renderFeeds = (state, i18nextInstance, feedsElement) => {
+const renderFeeds = (watchedState, i18nextInstance, feedsElement) => {
   if (feedsElement.children.length > 0) {
     const content = feedsElement.querySelector('div');
     content.remove();
@@ -21,7 +19,7 @@ const renderFeeds = (state, i18nextInstance, feedsElement) => {
   const listFeed = document.createElement('ul');
   listFeed.classList.add('list-group', 'border-0', 'rounded-0');
 
-  state.feeds.forEach((feed) => {
+  watchedState.feeds.forEach((feed) => {
     const feedItem = document.createElement('li');
     feedItem.classList.add('list-group-item', 'border-0', 'border-end-0');
 
@@ -40,7 +38,7 @@ const renderFeeds = (state, i18nextInstance, feedsElement) => {
   containerFeeds.append(headerContainerFeed, listFeed);
 };
 
-const renderPosts = (state, i18nextInstance, postsElement) => {
+const renderPosts = (watchedState, i18nextInstance, postsElement) => {
   if (postsElement.children.length > 0) {
     const content = postsElement.querySelector('div');
     content.remove();
@@ -61,7 +59,7 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
   const listPost = document.createElement('ul');
   listPost.classList.add('list-group', 'border-0', 'rounded-0');
 
-  state.posts.forEach((post) => {
+  watchedState.posts.forEach((post) => {
     const postItem = document.createElement('li');
     postItem.classList.add(
       'list-group-item',
@@ -74,16 +72,11 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
 
     const refPost = document.createElement('a');
     refPost.setAttribute('href', 'http://example.com/test/1736206860');
-    refPost.classList.add(state.uiState.viewedPosts.has(post.id) ? 'fw-normal' : 'fw-bold');
+    refPost.classList.add(watchedState.uiState.viewedPosts.has(post.id) ? 'fw-normal' : 'fw-bold');
     refPost.setAttribute('data-id', `${post.id}`);
     refPost.setAttribute('target', '_blank');
     refPost.setAttribute('rel', 'noopener noreferrer');
     refPost.textContent = post.title;
-
-    const watchedState = onChange(state, () => {
-      refPost.classList.remove('fw-normal', 'fw-bold');
-      refPost.classList.add(state.uiState.viewedPosts.has(post.id) ? 'fw-normal' : 'fw-bold');
-    });
 
     refPost.addEventListener('click', () => {
       watchedState.uiState.viewedPosts.add(post.id);
@@ -117,42 +110,46 @@ const renderPosts = (state, i18nextInstance, postsElement) => {
 };
 
 /* eslint-disable no-param-reassign */
-const render = (state, i18nextInstance, elementPage) => (path, value) => {
-  if (path === 'posts') renderPosts(state, i18nextInstance, elementPage.postsElement);
-  if (path === 'feeds') renderFeeds(state, i18nextInstance, elementPage.feedsElement);
+const render = (watchedState, i18nextInstance, elementPage, changedState) => {
+  if (changedState.path === 'posts' || changedState.path === 'uiState.viewedPosts') {
+    renderPosts(watchedState, i18nextInstance, elementPage.postsElement);
+  }
+  if (changedState.path === 'feeds') {
+    renderFeeds(watchedState, i18nextInstance, elementPage.feedsElement);
+  }
 
-  if (path === 'form.isValid') {
+  if (changedState.path === 'form.isValid') {
     elementPage.inputUrl.classList.remove('is-invalid');
 
-    if (value === false) {
+    if (changedState.value === false) {
       elementPage.inputUrl.classList.add('is-invalid');
     }
   }
 
-  if (path === 'form.error') {
-    if (value === null) {
+  if (changedState.path === 'form.error') {
+    if (changedState.value === null) {
       elementPage.formFeedback.textContent = '';
       return;
     }
 
-    elementPage.formFeedback.textContent = i18nextInstance.t(`errors.${value}`);
+    elementPage.formFeedback.textContent = i18nextInstance.t(`errors.${changedState.value}`);
 
     elementPage.formFeedback.classList.replace('text-success', 'text-danger');
   }
 
-  if (path === 'loadingProcess.error') {
-    if (value === null) {
+  if (changedState.path === 'loadingProcess.error') {
+    if (changedState.value === null) {
       elementPage.formFeedback.textContent = '';
       return;
     }
 
-    elementPage.formFeedback.textContent = i18nextInstance.t(`errors.${value}`);
+    elementPage.formFeedback.textContent = i18nextInstance.t(`errors.${changedState.value}`);
 
     elementPage.formFeedback.classList.replace('text-success', 'text-danger');
   }
 
-  if (path === 'loadingProcess.status') {
-    switch (value) {
+  if (changedState.path === 'loadingProcess.status') {
+    switch (changedState.value) {
       case 'loading': {
         elementPage.buttonAdd.setAttribute('disabled', '');
         elementPage.inputUrl.setAttribute('disabled', '');
@@ -176,7 +173,9 @@ const render = (state, i18nextInstance, elementPage) => (path, value) => {
         break;
       }
       default:
-        throw new Error(`Error: undefined status of the loading process '${state.loadingProcess}'`);
+        throw new Error(
+          `Error: undefined status of the loading process '${watchedState.loadingProcess}'`,
+        );
     }
   }
 };

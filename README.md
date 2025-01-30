@@ -13,6 +13,8 @@
 
 Приложение доступно по [ссылке](https://frontend-project-11-git-main-chukichaos-projects.vercel.app/), либо через клонирование данного репозитория.
 
+![rss-reader](https://github.com/user-attachments/assets/25d719b4-2bc1-468a-9dc1-cf6dadd7d9bb)
+
 _Установка:_
 
 1. _Клонируйте данный репозиторий._
